@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Linq;
 using System.Collections.Generic;
 
 public class Edge
@@ -10,6 +11,20 @@ public class Edge
 	public Edge(int to, int cost)
 	{
 		To = to;
+		Cost = cost;
+	}
+}
+
+public class CandidateRoad
+{
+	public int U;
+	public int V;
+	public int Cost;
+
+	public CandidateRoad(int u, int v, int cost)
+	{
+		U = u;
+		V = v;
 		Cost = cost;
 	}
 }
@@ -89,7 +104,7 @@ public class MinHeap
 
 public class Program
 {
-	public static int Dijkstra(List<Edge>[] graph, int source, int destination)
+	public static int[] Dijkstra(List<Edge>[] graph, int source)
 	{
 		int[] dist = new int[graph.Length];
 
@@ -97,7 +112,6 @@ public class Program
 
 		MinHeap heap = new MinHeap();
 		dist[source] = 0;
-
 		heap.Push(new HeapNode(source, 0));
 
 		while (heap.Count > 0)
@@ -107,7 +121,6 @@ public class Program
 			int currentDistance = node.Distance;
 
 			if (currentDistance != dist[current]) continue;
-			if (current == destination) return currentDistance;
 
 			for (int i = 0; i < graph[current].Count; i++)
 			{
@@ -122,72 +135,70 @@ public class Program
 			}
 		}	
 
-		return dist[destination];
-	}
-
-	public static string ReadLine()
-	{
-		string line;
-
-		do
-		{
-			line = Console.ReadLine();
-		}
-		while (line != null && line.Trim().Length == 0);
-
-		return line;
+		return dist;
 	}
 
 	public static void Main()
 	{
-		StringBuilder sb = new StringBuilder();
+		int datasets = int.Parse(Console.ReadLine());
 
-		int testCases = int.Parse(ReadLine());
-
-		for (int test = 0; test < testCases; test++)
+		for (int dataset = 0; dataset < datasets; dataset++)
 		{
-			int n = int.Parse(ReadLine());
+			int[] input = Console.ReadLine().Split().Select(int.Parse).ToArray();
+			int n = input[0], m = input[1], k = input[2], s = input[3] - 1, t = input[4] - 1;
 
 			List<Edge>[] graph = new List<Edge>[n];
-			Dictionary<string, int> cityIndex = new Dictionary<string, int>();
+			List<Edge>[] reverseGraph = new List<Edge>[n];
 
 			for (int i = 0; i < n; i++)
 			{
 				graph[i] = new List<Edge>();
+				reverseGraph[i] = new List<Edge>();
 			}
 
-			for (int city = 0; city < n; city++)
+			for (int i = 0; i < m; i++)
 			{
-				string cityName = ReadLine();
-				cityIndex[cityName] = city;
+				int[] line = Console.ReadLine().Split().Select(int.Parse).ToArray();
+				int d = line[0] - 1, c = line[1] - 1, l = line[2];
 
-				int neighbours = int.Parse(ReadLine());
+				graph[d].Add(new Edge(c, l));
+				reverseGraph[c].Add(new Edge(d, l));
+			}
 
-				for (int j = 0; j < neighbours; j++)
+			List<CandidateRoad> candidates = new List<CandidateRoad>();
+
+			for (int i = 0; i < k; i++)
+			{
+				int[] line = Console.ReadLine().Split().Select(int.Parse).ToArray();
+				int u = line[0] - 1, v = line[1] - 1, cost = line[2];
+
+				candidates.Add(new CandidateRoad(u, v, cost));
+			}
+
+			int[] distFromS = Dijkstra(graph, s);
+			int[] distToT = Dijkstra(reverseGraph, t);
+
+			int answer = distFromS[t];
+
+			for (int i = 0; i < candidates.Count; i++)
+			{
+				CandidateRoad road = candidates[i];
+
+				if (distFromS[road.U] != int.MaxValue && distToT[road.V] != int.MaxValue)
 				{
-					string[] parts = ReadLine().Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+					int distance = distFromS[road.U] + road.Cost + distToT[road.V];
+					answer = Math.Min(answer, distance);
+				}
 
-					int nextCity = int.Parse(parts[0]) - 1;
-					int cost = int.Parse(parts[1]);
-
-					graph[city].Add(new Edge(nextCity, cost));
+				if (distFromS[road.V] != int.MaxValue && distToT[road.U] != int.MaxValue)
+				{
+					int distance = distFromS[road.V] + road.Cost + distToT[road.U];
+					answer = Math.Min(answer, distance);
 				}
 			}
 
-			int queries = int.Parse(ReadLine());
-
-			for (int query = 0; query < queries; query++)
-			{
-				string[] names = ReadLine().Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-
-				int source = cityIndex[names[0]];
-				int destination = cityIndex[names[1]];
-
-				int answer = Dijkstra(graph, source, destination);
-				sb.AppendLine(answer.ToString());
-			}
+			if (answer == int.MaxValue) Console.WriteLine(-1);
+			else Console.WriteLine(answer);
 		}
-
-		Console.Write(sb.ToString());
 	}
 }
